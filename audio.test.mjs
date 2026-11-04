@@ -1,8 +1,29 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Readable } from 'node:stream';
-import { createAudioResource, StreamType } from '@discordjs/voice';
-import { decodeAudio } from './audio.mjs';
+import { PassThrough, Readable } from 'node:stream';
+import { setTimeout as wait } from 'node:timers/promises';
+import { AudioPlayerStatus, createAudioPlayer, createAudioResource, entersState, NoSubscriberBehavior, StreamType } from '@discordjs/voice';
+import * as audio from './audio.mjs';
+
+test('la lecture reprend après un creux dans le flux', { timeout: 3000 }, async () => {
+  const input = new PassThrough({ objectMode: true });
+  const player = createAudioPlayer({
+    behaviors: { ...audio.playbackBehaviors, noSubscriber: NoSubscriberBehavior.Play },
+  });
+  const packet = Buffer.from([0xf8, 0xff, 0xfe]);
+  try {
+    player.play(createAudioResource(input, { inputType: StreamType.Opus }));
+    input.write(packet);
+    await entersState(player, AudioPlayerStatus.Playing, 500);
+    await wait(400);
+    assert.equal(player.state.status, AudioPlayerStatus.Playing);
+    input.end(packet);
+    await entersState(player, AudioPlayerStatus.Idle, 1000);
+  } finally {
+    player.stop(true);
+    input.destroy();
+  }
+});
 
 test('convertit un WAV en paquets Opus pour Discord', { timeout: 10000 }, async () => {
   const samples = 4800;
@@ -24,7 +45,7 @@ test('convertit un WAV en paquets Opus pour Discord', { timeout: 10000 }, async 
   }
 
   const controller = new AbortController();
-  const { stream, done } = decodeAudio(Readable.from([wav]), controller.signal);
+  const { stream, done } = audio.decodeAudio(Readable.from([wav]), controller.signal);
   const resource = createAudioResource(stream, { inputType: StreamType.Raw });
   const collect = async () => {
     const packets = [];

@@ -1,7 +1,7 @@
 import { Client, EmbedBuilder, Events, GatewayIntentBits, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { AudioPlayerStatus, VoiceConnectionStatus, createAudioPlayer, entersState, joinVoiceChannel } from '@discordjs/voice';
 import { audioUrl, findSong } from './sources.mjs';
-import { openAudio } from './audio.mjs';
+import { openAudio, playbackBehaviors } from './audio.mjs';
 import { findYouTubeAudio, findYouTubePlaylist, youtubePlaylist, youtubeVideo } from './youtube.mjs';
 
 const token = process.env.DISCORD_TOKEN;
@@ -93,7 +93,7 @@ function createSession(guild, voiceChannel) {
     adapterCreator: guild.voiceAdapterCreator,
     selfDeaf: true,
   });
-  const player = createAudioPlayer();
+  const player = createAudioPlayer({ behaviors: playbackBehaviors });
   const session = { guildId: guild.id, channelId: voiceChannel.id, connection, player, queue: [] };
   sessions.set(guild.id, session);
   connection.subscribe(player);

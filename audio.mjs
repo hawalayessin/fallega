@@ -5,6 +5,9 @@ import ffmpeg from '@ffmpeg-installer/ffmpeg';
 import { createAudioResource, StreamType } from '@discordjs/voice';
 import { streamYouTube } from './youtube.mjs';
 
+// Discord reads one Opus frame every 20 ms. Allow brief network stalls without ending the track.
+export const playbackBehaviors = { maxMissedFrames: 500 };
+
 export function decodeAudio(input, signal) {
   const decoder = spawn(ffmpeg.path, [
     '-nostdin', '-hide_banner', '-loglevel', 'error',
