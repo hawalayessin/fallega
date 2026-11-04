@@ -1,4 +1,10 @@
 import { execFile, spawn } from 'node:child_process';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { promisify } from 'node:util';
 
 const run = promisify(execFile);
@@ -69,14 +75,47 @@ export async function findYouTubeAudio(input, executable) {
   throw new Error('YouTube n’a pas fourni de piste audio pour cette demande.');
 }
 
-export function streamYouTube(video, executable, signal) {
-  const downloader = spawn(executable, [...options, '--quiet', '-o', '-', '--', video],
-    { signal, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
-  downloader.on('error', (error) => {
-    if (!signal.aborted) downloader.stdout.destroy(error);
-  });
-  downloader.once('close', (code) => {
-    if (code !== 0 && !signal.aborted) downloader.stdout.destroy(new Error('Flux YouTube indisponible.'));
-  });
-  return downloader.stdout;
+export async function bufferYouTube(video, executable, signal) {
+  const directory = await mkdtemp(join(tmpdir(), 'fallega-'));
+  const path = join(directory, 'audio');
+  const cleanup = () => rm(directory, { recursive: true, force: true, maxRetries: 3 });
+  const cancellation = new AbortController();
+  const downloadSignal = AbortSignal.any([signal, cancellation.signal, AbortSignal.timeout(90000)]);
+
+  try {
+    downloadSignal.throwIfAborted();
+    const downloader = spawn(executable, [
+      ...options, '--retries', '2', '--quiet', '-o', '-', '--', video,
+    ], { signal: downloadSignal, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+    const finished = new Promise((resolve, reject) => {
+      downloader.once('error', reject);
+      downloader.once('close', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error('Téléchargement YouTube incomplet.'));
+      });
+    });
+    let bytes = 0;
+    const sizeLimit = new Transform({
+      transform(chunk, encoding, callback) {
+        bytes += chunk.length;
+        if (bytes > 100 * 1024 * 1024) callback(new Error('Le morceau dépasse 100 Mo.'));
+        else callback(null, chunk);
+      },
+    });
+    const written = pipeline(downloader.stdout, sizeLimit, createWriteStream(path), { signal: downloadSignal });
+    try {
+      await Promise.all([finished, written]);
+    } finally {
+      cancellation.abort();
+      await Promise.allSettled([finished, written]);
+    }
+    signal.throwIfAborted();
+    if (!bytes) throw new Error('YouTube n’a renvoyé aucun audio.');
+    const input = createReadStream(path, { signal });
+    input.once('close', () => void cleanup().catch(() => {}));
+    return input;
+  } catch (error) {
+    await cleanup().catch(() => {});
+    throw error;
+  }
 }

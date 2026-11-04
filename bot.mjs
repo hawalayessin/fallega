@@ -81,8 +81,12 @@ async function advance(session) {
       finish(session, track, 'Lecture interrompue. Vérifie que la source fournit bien un flux audio.');
     });
     if (session.current === track) session.player.play(resource);
-  } catch {
-    finish(session, track, 'Impossible de lire cette source. Vérifie le lien ou renvoie le fichier.');
+  } catch (error) {
+    if (session.current !== track) return;
+    console.warn('Préparation audio interrompue dans le serveur', session.guildId, error.code ?? error.name);
+    finish(session, track, track.video
+      ? 'Impossible de charger le morceau YouTube en entier. Essaie de le relancer avec /play.'
+      : 'Impossible de lire cette source. Vérifie le lien ou renvoie le fichier.');
   }
 }
 
@@ -105,6 +109,10 @@ function createSession(guild, voiceChannel) {
     try {
       await entersState(connection, VoiceConnectionStatus.Ready, 5000);
     } catch {
+      if (session.current) {
+        console.warn('Connexion vocale perdue dans le serveur', session.guildId);
+        notify(session.current, 'La connexion au salon vocal a été perdue. Relance /play pour reprendre.');
+      }
       close(session);
     }
   });

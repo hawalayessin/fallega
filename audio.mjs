@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import ffmpeg from '@ffmpeg-installer/ffmpeg';
 import { createAudioResource, StreamType } from '@discordjs/voice';
-import { streamYouTube } from './youtube.mjs';
+import { bufferYouTube } from './youtube.mjs';
 
 // Discord reads one Opus frame every 20 ms. Allow brief network stalls without ending the track.
 export const playbackBehaviors = { maxMissedFrames: 500 };
@@ -42,7 +42,7 @@ async function fetchAudio(url, controller) {
 
 export async function openAudio(url, controller, metadata, onError) {
   const input = metadata.video
-    ? streamYouTube(metadata.video, process.env.YT_DLP_PATH, controller.signal)
+    ? await bufferYouTube(metadata.video, process.env.YT_DLP_PATH, controller.signal)
     : await fetchAudio(url, controller);
   const { stream, done } = decodeAudio(input, controller.signal);
   done.catch(() => {
