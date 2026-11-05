@@ -84,7 +84,7 @@ async function advance(session) {
   } catch (error) {
     if (session.current !== track) return;
     console.warn('Préparation audio interrompue dans le serveur', session.guildId, error.code ?? error.name);
-    finish(session, track, track.video
+    finish(session, track, error.code === 'YOUTUBE_AUTH_REQUIRED' ? error.message : track.video
       ? 'Impossible de charger le morceau YouTube en entier. Essaie de le relancer avec /play.'
       : 'Impossible de lire cette source. Vérifie le lien ou renvoie le fichier.');
   }
@@ -260,7 +260,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.deferred) await interaction.editReply(reply);
     else await interaction.reply(reply);
   } catch (error) {
-    const content = error.code ? 'Discord a refusé cette opération.' : error.message;
+    const content = error.code && error.code !== 'YOUTUBE_AUTH_REQUIRED' ? 'Discord a refusé cette opération.' : error.message;
     const reply = { content, allowedMentions: { parse: [] } };
     if (interaction.deferred) await interaction.editReply(reply).catch(() => {});
     else await interaction.reply({ ...reply, flags: MessageFlags.Ephemeral }).catch(() => {});

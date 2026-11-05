@@ -16,6 +16,15 @@ const options = [
   '-f', 'bestaudio',
 ];
 
+function sourceError(details) {
+  const error = new Error('Le service audio n’a pas fourni de piste accessible.');
+  if (/sign in to confirm|not a bot|HTTP Error 429|Too Many Requests/i.test(details)) {
+    error.code = 'YOUTUBE_AUTH_REQUIRED';
+    error.message = 'YouTube refuse l’accès audio depuis cet hébergement (429 / authentification requise). Relancer /play ne résout pas ce blocage.';
+  }
+  return error;
+}
+
 export function youtubeVideo(input) {
   let url;
   try {
@@ -101,7 +110,9 @@ export async function findYouTubeAudio(input, executable) {
     data = JSON.parse(stdout);
     const video = youtubeVideo(data.webpage_url) ?? soundCloudTrack(data.webpage_url);
     if (video && typeof data.title === 'string') return { video, label: data.title, source: video };
-  } catch {
+  } catch (error) {
+    const failure = sourceError(error.stderr ?? '');
+    if (failure.code === 'YOUTUBE_AUTH_REQUIRED') throw failure;
     throw new Error(input.startsWith('scsearch1:') || soundCloudTrack(input)
       ? 'SoundCloud n’a fourni aucune piste accessible. Essaie un titre avec son artiste ou un lien SoundCloud.'
       : 'YouTube bloque cette demande. Essaie un titre avec son artiste ou un lien SoundCloud.');
@@ -120,12 +131,16 @@ export async function bufferYouTube(video, executable, signal) {
     downloadSignal.throwIfAborted();
     const downloader = spawn(executable, [
       ...options, '--retries', '2', '--quiet', '-o', '-', '--', video,
-    ], { signal: downloadSignal, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+    ], { signal: downloadSignal, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let diagnostics = '';
+    downloader.stderr.on('data', (chunk) => {
+      diagnostics = (diagnostics + chunk.toString()).slice(-8192);
+    });
     const finished = new Promise((resolve, reject) => {
       downloader.once('error', reject);
       downloader.once('close', (code) => {
         if (code === 0) resolve();
-        else reject(new Error('Téléchargement YouTube incomplet.'));
+        else reject(sourceError(diagnostics));
       });
     });
     let bytes = 0;
