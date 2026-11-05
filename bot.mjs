@@ -2,7 +2,7 @@ import { Client, EmbedBuilder, Events, GatewayIntentBits, MessageFlags, Permissi
 import { AudioPlayerStatus, VoiceConnectionStatus, createAudioPlayer, entersState, joinVoiceChannel } from '@discordjs/voice';
 import { audioUrl, findSong } from './sources.mjs';
 import { openAudio, playbackBehaviors } from './audio.mjs';
-import { findYouTubeAudio, findYouTubePlaylist, youtubePlaylist, youtubeVideo } from './youtube.mjs';
+import { findHostedAudio, findYouTubeAudio, findYouTubePlaylist, soundCloudTrack, youtubePlaylist, youtubeVideo } from './youtube.mjs';
 
 const token = process.env.DISCORD_TOKEN;
 const guildId = process.env.DISCORD_GUILD_ID?.trim();
@@ -159,7 +159,7 @@ async function handle(interaction) {
     const hasScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(query);
     const isLink = hasScheme || /^(?:www\.|youtu\.be\/|youtube\.com\/|open\.spotify\.com\/|deezer\.com\/)/i.test(query);
     const link = attachment?.url ?? (isLink ? (hasScheme ? query : 'https://' + query) : undefined);
-    const video = link && youtubeVideo(link);
+    const video = link && (youtubeVideo(link) ?? soundCloudTrack(link));
     const playlistLink = youtubePlaylist(link);
     if (playlistLink && !youtubeExecutable) throw new Error('La lecture de playlists YouTube nécessite yt-dlp.');
     if (link && !playlistLink && !(video && youtubeExecutable)) {
@@ -170,9 +170,10 @@ async function handle(interaction) {
       if (playlistLink) {
         playlist = await findYouTubePlaylist(playlistLink, youtubeExecutable, queueLimit);
       } else {
-        track = youtubeExecutable
-          ? await findYouTubeAudio(video ?? 'ytsearch1:' + query, youtubeExecutable)
-          : await findSong(query);
+        if (!youtubeExecutable) track = await findSong(query);
+        else if (process.env.SEARCH_SOURCE === 'soundcloud' || soundCloudTrack(video)) {
+          track = await findHostedAudio(video ?? query, youtubeExecutable);
+        } else track = await findYouTubeAudio(video ?? 'ytsearch1:' + query, youtubeExecutable);
       }
       session = sessions.get(guild.id);
       voiceChannel = guild.voiceStates.cache.get(interaction.user.id)?.channel;

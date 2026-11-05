@@ -54,3 +54,4 @@ Pour ajouter une playlist YouTube, utilise son lien de partage youtube.com/playl
 Pour héberger ta propre instance, crée une application Discord et configure son jeton dans DISCORD_TOKEN. Laisse DISCORD_GUILD_ID vide pour publier les commandes globalement. Renseigne cet identifiant pour limiter les commandes à un serveur de test. DISCORD_APPLICATION_ID est facultatif et permet de vérifier que le jeton correspond à ton application.
 
 Pour garder le bot en ligne, lance npm start sur une machine qui maintient le processus Node.js actif et autorise les connexions vocales sortantes de Discord.
+Sur un hébergement bloqué par YouTube, SEARCH_SOURCE=soundcloud active la recherche SoundCloud par titre. Les liens YouTube servent alors à récupérer le titre et chercher une autre version sur SoundCloud. Le résultat est explicitement marqué SoundCloud et peut différer de la vidéo originale. Les liens SoundCloud sont aussi acceptés directement.
