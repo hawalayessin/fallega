@@ -21,11 +21,10 @@ npm test
 npm start
 ```
 
-Attends le message « Bot prêt ». Rejoins un salon vocal standard et lance **/play fichier:** avec un MP3 ou un WAV. Laisse PowerShell ouvert pendant l'utilisation.
+Attends le message « Bot prêt ». Rejoins un salon vocal standard et lance **/play query:** avec un titre ou un lien. Laisse PowerShell ouvert pendant l'utilisation.
 
 ## Commandes
 
-- **/play fichier:** ajoute un fichier audio joint.
 - **/play query:** accepte un lien HTTPS direct autorisé ou un titre et un artiste. Avec yt-dlp, cette option accepte aussi un lien YouTube et cherche les titres sur YouTube. Sans yt-dlp, la recherche utilise Wikimedia Commons.
 - **/join** connecte le bot à ton salon vocal pour tester la connexion sans lancer de morceau.
 - **/queue** affiche la file. **/pause** et **/resume** contrôlent la lecture.

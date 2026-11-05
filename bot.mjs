@@ -17,9 +17,8 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 const sessions = new Map();
 const queueLimit = 25;
 const commands = [
-  new SlashCommandBuilder().setName('play').setDescription('Joue un titre, une playlist YouTube ou un fichier')
-    .addStringOption((option) => option.setName('query').setDescription('Titre, lien audio ou lien YouTube (vidéo ou playlist)').setMaxLength(500))
-    .addAttachmentOption((option) => option.setName('fichier').setDescription('Fichier audio à jouer')),
+  new SlashCommandBuilder().setName('play').setDescription('Joue un titre, un lien audio ou une playlist YouTube')
+    .addStringOption((option) => option.setName('query').setDescription('Titre, lien audio ou lien YouTube (vidéo ou playlist)').setMaxLength(500).setRequired(true)),
   ...Object.entries({
     join: 'Connecte le bot à ton salon vocal pour tester la connexion',
     queue: 'Affiche le morceau en cours et la file',
@@ -152,19 +151,18 @@ async function handle(interaction) {
 
   if (interaction.commandName === 'play') {
     const query = (interaction.options.getString('query') ?? interaction.options.getString('lien'))?.trim();
-    const attachment = interaction.options.getAttachment('fichier');
-    if (Boolean(query) === Boolean(attachment)) throw new Error('Utilise /play query avec un titre ou un lien, ou choisis un fichier.');
+    if (!query) throw new Error('Renseigne query avec un titre ou un lien.');
     let track;
     let playlist;
     const hasScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(query);
     const isLink = hasScheme || /^(?:www\.|youtu\.be\/|youtube\.com\/|open\.spotify\.com\/|deezer\.com\/)/i.test(query);
-    const link = attachment?.url ?? (isLink ? (hasScheme ? query : 'https://' + query) : undefined);
+    const link = isLink ? (hasScheme ? query : 'https://' + query) : undefined;
     const video = link && (youtubeVideo(link) ?? soundCloudTrack(link));
     const playlistLink = youtubePlaylist(link);
     if (playlistLink && !youtubeExecutable) throw new Error('La lecture de playlists YouTube nécessite yt-dlp.');
     if (link && !playlistLink && !(video && youtubeExecutable)) {
       const url = audioUrl(link, allowedHosts);
-      track = { url, label: attachment?.name ?? url.hostname };
+      track = { url, label: url.hostname };
     } else {
       await interaction.deferReply();
       if (playlistLink) {
