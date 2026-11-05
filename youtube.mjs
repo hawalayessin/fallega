@@ -1,6 +1,6 @@
 import { execFile, spawn } from 'node:child_process';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Transform } from 'node:stream';
@@ -111,7 +111,9 @@ export async function findYouTubeAudio(input, executable) {
         { timeout: 25000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 }));
     data = JSON.parse(stdout);
     const video = youtubeVideo(data.webpage_url) ?? soundCloudTrack(data.webpage_url);
-    if (video && typeof data.title === 'string') return { video, label: data.title, source: video };
+    if (video && typeof data.title === 'string') {
+      return { video, label: data.title, source: video, downloadInfo: data, resolvedAt: Date.now() };
+    }
   } catch (error) {
     const failure = sourceError(error.stderr ?? '');
     if (failure.code === 'YOUTUBE_AUTH_REQUIRED') throw failure;
@@ -122,7 +124,7 @@ export async function findYouTubeAudio(input, executable) {
   throw new Error('YouTube n’a pas fourni de piste audio pour cette demande.');
 }
 
-export async function bufferYouTube(video, executable, signal) {
+export async function bufferYouTube(video, executable, signal, downloadInfo) {
   return withYouTubeSession(video, async (session) => {
     const directory = await mkdtemp(join(tmpdir(), 'fallega-'));
     const path = join(directory, 'audio');
@@ -132,8 +134,14 @@ export async function bufferYouTube(video, executable, signal) {
 
     try {
       downloadSignal.throwIfAborted();
+      let source = [video];
+      if (downloadInfo) {
+        const infoPath = join(directory, 'info.json');
+        await writeFile(infoPath, JSON.stringify(downloadInfo), { mode: 0o600 });
+        source = ['--load-info-json', infoPath];
+      }
       const downloader = spawn(executable, [
-        ...options, '--retries', '2', '--quiet', '-o', '-', ...session, '--', video,
+        ...options, '--retries', '2', '--quiet', '-o', '-', ...session, ...source,
       ], { signal: downloadSignal, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
       let diagnostics = '';
       downloader.stderr.on('data', (chunk) => {

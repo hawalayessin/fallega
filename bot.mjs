@@ -187,7 +187,8 @@ async function handle(interaction) {
     session ??= createSession(guild, voiceChannel);
     const tracks = (playlist?.tracks ?? [track]).slice(0, available);
     session.queue.push(...tracks.map((item) => ({
-      url: item.url, video: item.video, label: item.label.slice(0, 100), channel: interaction.channel,
+      url: item.url, video: item.video, downloadInfo: item.downloadInfo, resolvedAt: item.resolvedAt,
+      label: item.label.slice(0, 100), channel: interaction.channel,
     })));
     void advance(session);
     if (playlist) {

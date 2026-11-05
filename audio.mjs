@@ -41,8 +41,9 @@ async function fetchAudio(url, controller) {
 }
 
 export async function openAudio(url, controller, metadata, onError) {
+  const downloadInfo = Date.now() - metadata.resolvedAt < 10 * 60 * 1000 ? metadata.downloadInfo : undefined;
   const input = metadata.video
-    ? await bufferYouTube(metadata.video, process.env.YT_DLP_PATH, controller.signal)
+    ? await bufferYouTube(metadata.video, process.env.YT_DLP_PATH, controller.signal, downloadInfo)
     : await fetchAudio(url, controller);
   const { stream, done } = decodeAudio(input, controller.signal);
   done.catch(() => {
