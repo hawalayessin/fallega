@@ -55,3 +55,4 @@ Pour héberger ta propre instance, crée une application Discord et configure so
 
 Pour garder le bot en ligne, lance npm start sur une machine qui maintient le processus Node.js actif et autorise les connexions vocales sortantes de Discord.
 Sur un hébergement bloqué par YouTube, SEARCH_SOURCE=soundcloud active la recherche SoundCloud par titre. Les liens YouTube servent alors à récupérer le titre et chercher une autre version sur SoundCloud. Le résultat est explicitement marqué SoundCloud et peut différer de la vidéo originale. Les liens SoundCloud sont aussi acceptés directement.
+Session YouTube facultative pour un test authentifié. YOUTUBE_COOKIES accepte le contenu Netscape des cookies youtube.com uniquement. Configure cette valeur comme secret sur votre hébergeur. Chaque commande écrit un fichier temporaire privé, supprimé après son exécution. La session ne garantit pas de lever les restrictions YouTube.

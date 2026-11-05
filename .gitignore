@@ -4,3 +4,5 @@
 node_modules/
 .railway/
 .vercel/
+*cookies*.txt
+*storage-state*.json

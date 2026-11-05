@@ -8,3 +8,5 @@ node_modules
 bin
 .venv
 *.log
+*cookies*.txt
+*storage-state*.json
